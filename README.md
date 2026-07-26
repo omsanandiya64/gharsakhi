@@ -15,8 +15,8 @@ PostgreSQL (raw SQL via `pg`, no ORM). Full spec: `02-GHARSAKHI-SPEC.md`.
 cd server
 npm install
 cp .env.example .env   # fill in DATABASE_URL with your real Postgres password
-npm run migrate        # available from Phase 1 onward
-npm run seed           # available from Phase 1 onward
+npm run migrate         # applies 001_init, 002_indexes, 003_push (safe to re-run)
+npm run seed            # wipes and reloads all demo data (safe to re-run)
 npm run dev             # http://localhost:4000
 ```
 
