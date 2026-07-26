@@ -8,11 +8,12 @@ export function parsePagination({ page, page_size } = {}) {
 }
 
 /**
- * Strips the COUNT(*) OVER() window-function column off each row and returns
- * the clean envelope. Total is read off the first row (0 if the page is empty).
+ * `total` must come from its own COUNT(*) query, not a COUNT(*) OVER() window
+ * column on the paginated data query - that column only rides along on rows
+ * that are actually returned, so a page landing beyond the last row (a common,
+ * valid request) would get zero data rows and silently report total=0 even
+ * when earlier pages have matches.
  */
-export function toEnvelope(rows, { page, pageSize }) {
-  const total = rows[0]?.total_count ?? 0;
-  const data = rows.map(({ total_count, ...rest }) => rest);
-  return { data, page, page_size: pageSize, total };
+export function toEnvelope(rows, total, { page, pageSize }) {
+  return { data: rows, page, page_size: pageSize, total };
 }

@@ -308,6 +308,10 @@ export async function createReview(customerId, bookingId, { rating, comment }) {
   try {
     await client.query('BEGIN');
 
+    const { rows: custRows } = await client.query('SELECT is_blocked FROM customers WHERE id = $1', [customerId]);
+    if (!custRows[0]) throw Errors.NOT_FOUND('Customer not found');
+    if (custRows[0].is_blocked) throw Errors.ACCOUNT_BLOCKED();
+
     const { rows: bookingRows } = await client.query(
       'SELECT id, customer_id, worker_id, status FROM bookings WHERE id = $1',
       [bookingId]
@@ -383,6 +387,12 @@ export async function listCustomerBookings(customerId, filters, { pageSize, offs
   const params = [customerId];
   const clauses = ['b.customer_id = $1'];
   pushBookingFilters(clauses, params, filters);
+  const whereSql = clauses.join(' AND ');
+
+  const { rows: countRows } = await pool.query(
+    `SELECT COUNT(*)::int AS total FROM bookings b WHERE ${whereSql}`,
+    params
+  );
 
   const limitIdx = params.length + 1;
   const offsetIdx = params.length + 2;
@@ -392,24 +402,29 @@ export async function listCustomerBookings(customerId, filters, { pageSize, offs
             b.created_at, b.accepted_at, b.declined_at, b.completed_at, b.cancelled_at,
             s.id AS service_id, s.name AS service_name, s.icon AS service_icon,
             w.id AS worker_id, w.name AS worker_name, w.photo_url AS worker_photo_url,
-            a.name AS area_name,
-            COUNT(*) OVER()::int AS total_count
+            a.name AS area_name
      FROM bookings b
      JOIN services s ON s.id = b.service_id
      JOIN workers w ON w.id = b.worker_id
      JOIN areas a ON a.id = b.area_id
-     WHERE ${clauses.join(' AND ')}
+     WHERE ${whereSql}
      ORDER BY b.created_at DESC
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
     [...params, pageSize, offset]
   );
-  return toEnvelope(rows, { page, pageSize });
+  return toEnvelope(rows, countRows[0].total, { page, pageSize });
 }
 
 export async function listWorkerBookings(workerId, filters, { pageSize, offset, page }) {
   const params = [workerId];
   const clauses = ['b.worker_id = $1'];
   pushBookingFilters(clauses, params, filters);
+  const whereSql = clauses.join(' AND ');
+
+  const { rows: countRows } = await pool.query(
+    `SELECT COUNT(*)::int AS total FROM bookings b WHERE ${whereSql}`,
+    params
+  );
 
   const limitIdx = params.length + 1;
   const offsetIdx = params.length + 2;
@@ -419,18 +434,17 @@ export async function listWorkerBookings(workerId, filters, { pageSize, offset, 
             b.created_at, b.accepted_at, b.declined_at, b.completed_at, b.cancelled_at,
             s.id AS service_id, s.name AS service_name, s.icon AS service_icon,
             c.id AS customer_id, c.name AS customer_name,
-            a.name AS area_name,
-            COUNT(*) OVER()::int AS total_count
+            a.name AS area_name
      FROM bookings b
      JOIN services s ON s.id = b.service_id
      JOIN customers c ON c.id = b.customer_id
      JOIN areas a ON a.id = b.area_id
-     WHERE ${clauses.join(' AND ')}
+     WHERE ${whereSql}
      ORDER BY b.created_at DESC
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
     [...params, pageSize, offset]
   );
-  return toEnvelope(rows, { page, pageSize });
+  return toEnvelope(rows, countRows[0].total, { page, pageSize });
 }
 
 export async function getCustomerBookingDetail(customerId, bookingId) {
@@ -450,9 +464,15 @@ export async function getCustomerBookingDetail(customerId, bookingId) {
 }
 
 export async function getWorkerProfileDetail(workerId) {
+  // No is_blocked filter here on purpose: matching (matchWorkers) and booking
+  // creation already exclude blocked workers, but a customer with a past
+  // completed booking must still be able to open that worker's profile from
+  // their own history - hiding it would be inconsistent with every other
+  // booking-history read path, which already surfaces a blocked worker's
+  // name/photo/rating unfiltered.
   const { rows: workerRows } = await pool.query(
     `SELECT id, name, photo_url, bio, is_online, rating_avg, rating_count
-     FROM workers WHERE id = $1 AND is_blocked = FALSE`,
+     FROM workers WHERE id = $1`,
     [workerId]
   );
   const worker = workerRows[0];
@@ -472,9 +492,13 @@ export async function getWorkerProfileDetail(workerId) {
 }
 
 export async function getWorkerReviews(workerId, { pageSize, offset, page }) {
+  const { rows: countRows } = await pool.query(
+    'SELECT COUNT(*)::int AS total FROM reviews WHERE worker_id = $1',
+    [workerId]
+  );
+
   const { rows } = await pool.query(
-    `SELECT r.id, r.rating, r.comment, r.created_at, r.booking_id, c.name AS customer_name,
-            COUNT(*) OVER()::int AS total_count
+    `SELECT r.id, r.rating, r.comment, r.created_at, r.booking_id, c.name AS customer_name
      FROM reviews r
      JOIN customers c ON c.id = r.customer_id
      WHERE r.worker_id = $1
@@ -490,7 +514,7 @@ export async function getWorkerReviews(workerId, { pageSize, offset, page }) {
   const breakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   for (const r of breakdownRows) breakdown[r.rating] = r.count;
 
-  return { breakdown, reviews: toEnvelope(rows, { page, pageSize }) };
+  return { breakdown, reviews: toEnvelope(rows, countRows[0].total, { page, pageSize }) };
 }
 
 export async function getWorkerRequests(workerId) {

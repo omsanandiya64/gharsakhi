@@ -9,10 +9,14 @@ async function getWallet(table, actor, actorId, { pageSize, offset, page }) {
   );
   if (!balanceRows[0]) throw Errors.NOT_FOUND(`${actor === 'customer' ? 'Customer' : 'Worker'} not found`);
 
+  const { rows: countRows } = await pool.query(
+    'SELECT COUNT(*)::int AS total FROM wallet_transactions WHERE actor = $1 AND actor_id = $2',
+    [actor, actorId]
+  );
+
   const { rows } = await pool.query(
     `SELECT wt.id, wt.type, wt.amount_paise, wt.balance_after_paise, wt.note, wt.created_at,
-            wt.booking_id, s.name AS service_name,
-            COUNT(*) OVER()::int AS total_count
+            wt.booking_id, s.name AS service_name
      FROM wallet_transactions wt
      LEFT JOIN bookings b ON b.id = wt.booking_id
      LEFT JOIN services s ON s.id = b.service_id
@@ -24,7 +28,7 @@ async function getWallet(table, actor, actorId, { pageSize, offset, page }) {
 
   return {
     balance_paise: balanceRows[0].wallet_paise,
-    transactions: toEnvelope(rows, { page, pageSize }),
+    transactions: toEnvelope(rows, countRows[0].total, { page, pageSize }),
   };
 }
 
