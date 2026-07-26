@@ -16,4 +16,7 @@ export const Errors = {
   PHONE_ALREADY_REGISTERED: () => new AppError(409, 'PHONE_ALREADY_REGISTERED', 'Phone number is already registered'),
   EMAIL_ALREADY_REGISTERED: () => new AppError(409, 'EMAIL_ALREADY_REGISTERED', 'Email is already registered'),
   CONFLICT: (message = 'Conflict') => new AppError(409, 'CONFLICT', message),
+  INSUFFICIENT_BALANCE: () => new AppError(402, 'INSUFFICIENT_BALANCE', 'Insufficient wallet balance'),
+  WORKER_UNAVAILABLE: () => new AppError(409, 'WORKER_UNAVAILABLE', 'Worker is not available for this service/area right now'),
+  INVALID_TRANSITION: () => new AppError(409, 'INVALID_TRANSITION', 'This booking cannot change to that status from its current state'),
 };

@@ -13,3 +13,17 @@ export function validate(schema) {
     next();
   };
 }
+
+export function validateQuery(schema) {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.query);
+    if (!result.success) {
+      const message = result.error.issues
+        .map((i) => `${i.path.join('.') || 'query'}: ${i.message}`)
+        .join('; ');
+      return next(Errors.VALIDATION_ERROR(message));
+    }
+    req.validatedQuery = result.data;
+    next();
+  };
+}

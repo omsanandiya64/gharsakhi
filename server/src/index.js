@@ -3,6 +3,9 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import authRouter from './routes/auth.js';
+import bookingRouter from './routes/booking.js';
+import customerRouter from './routes/customer.js';
+import workerRouter from './routes/worker.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
 
 const app = express();
@@ -19,6 +22,9 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api', bookingRouter);
+app.use('/api/customer', customerRouter);
+app.use('/api/worker', workerRouter);
 
 app.use('/api', notFoundHandler);
 app.use(errorHandler);
