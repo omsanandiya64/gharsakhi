@@ -1,0 +1,42 @@
+:root {
+  --gs-teal-900: #0B3D3B;
+  --gs-teal-600: #14807C;
+  --gs-teal-100: #DCEFED;
+  --gs-marigold: #F2A007;
+  --gs-marigold-100: #FDF0D6;
+  --gs-sand: #FBF8F3;
+  --gs-ink: #14211F;
+  --gs-muted: #6B7B79;
+  --gs-online: #22A45D;
+  --gs-danger: #D64545;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--gs-sand);
+  color: var(--gs-ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: 'Baloo Bhai 2', sans-serif;
+  color: var(--gs-teal-900);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gs-teal-600);
+  outline-offset: 2px;
+}
