@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import authRouter from './routes/auth.js';
+import { errorHandler, notFoundHandler } from './middleware/error.js';
 
 const app = express();
 
@@ -15,6 +17,11 @@ if (process.env.NODE_ENV !== 'production') {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+app.use('/api/auth', authRouter);
+
+app.use('/api', notFoundHandler);
+app.use(errorHandler);
 
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
   console.warn('[gharsakhi] Razorpay keys missing — payment routes will return 503 PAYMENTS_NOT_CONFIGURED');
