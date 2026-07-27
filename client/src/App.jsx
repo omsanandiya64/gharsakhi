@@ -8,6 +8,8 @@ import AdminLogin from './pages/public/AdminLogin.jsx';
 
 import { CustomerLayout } from './layouts/CustomerLayout.jsx';
 import CustomerHome from './pages/customer/Home.jsx';
+import BrowseWorkers from './pages/customer/BrowseWorkers.jsx';
+import BookingConfirm from './pages/customer/BookingConfirm.jsx';
 import CustomerBookings from './pages/customer/Bookings.jsx';
 import CustomerWallet from './pages/customer/Wallet.jsx';
 import CustomerProfile from './pages/customer/Profile.jsx';
@@ -45,10 +47,20 @@ function App() {
         }
       >
         <Route index element={<CustomerHome />} />
+        <Route path="book/:serviceId" element={<BrowseWorkers />} />
         <Route path="bookings" element={<CustomerBookings />} />
         <Route path="wallet" element={<CustomerWallet />} />
         <Route path="profile" element={<CustomerProfile />} />
       </Route>
+
+      <Route
+        path="/customer/book/confirm"
+        element={
+          <ProtectedRoute role="customer">
+            <BookingConfirm />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/worker"
