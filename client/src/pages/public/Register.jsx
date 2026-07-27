@@ -71,9 +71,15 @@ export default function Register() {
 
   useEffect(() => {
     if (!config) return;
-    listAreas().then(setAreas).catch(() => {});
-    if (role === 'worker') listServices().then(setServices).catch(() => {});
-  }, [config, role]);
+    listAreas()
+      .then(setAreas)
+      .catch(() => showToast('Could not load areas. Try reloading the page.', 'error'));
+    if (role === 'worker') {
+      listServices()
+        .then(setServices)
+        .catch(() => showToast('Could not load services. Try reloading the page.', 'error'));
+    }
+  }, [config, role, showToast]);
 
   if (!config) return <Navigate to="/" replace />;
 

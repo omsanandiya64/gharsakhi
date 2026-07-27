@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { listServices, listAreas } from '../../api/services.js';
 import { matchWorkers } from '../../api/bookings.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { useToast } from '../../components/Toast.jsx';
 import { Card } from '../../components/Card.jsx';
 import { MoneyText } from '../../components/MoneyText.jsx';
 import { Rating } from '../../components/Rating.jsx';
@@ -17,6 +18,7 @@ export default function BrowseWorkers() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [service, setService] = useState(location.state?.service ?? null);
   const [serviceStatus, setServiceStatus] = useState(location.state?.service ? 'ready' : 'loading');
@@ -25,11 +27,18 @@ export default function BrowseWorkers() {
   const [state, setState] = useState({ status: 'idle', workers: [] });
 
   useEffect(() => {
-    listAreas().then(setAreas).catch(() => {});
-  }, []);
+    listAreas()
+      .then(setAreas)
+      .catch(() => showToast('Could not load areas. Try reloading the page.', 'error'));
+  }, [showToast]);
 
-  useEffect(() => {
-    if (service) return;
+  const loadService = useCallback(() => {
+    if (location.state?.service) {
+      setService(location.state.service);
+      setServiceStatus('ready');
+      return;
+    }
+    setServiceStatus('loading');
     listServices()
       .then((services) => {
         const found = services.find((s) => String(s.id) === String(serviceId));
@@ -41,7 +50,11 @@ export default function BrowseWorkers() {
         }
       })
       .catch(() => setServiceStatus('error'));
-  }, [service, serviceId]);
+  }, [location.state, serviceId]);
+
+  useEffect(() => {
+    loadService();
+  }, [serviceId]);
 
   const load = useCallback(() => {
     if (!areaId) {
@@ -63,7 +76,7 @@ export default function BrowseWorkers() {
   }
 
   if (serviceStatus === 'error' || !service) {
-    return <ErrorState message="Couldn't load this service." onRetry={() => window.location.reload()} />;
+    return <ErrorState message="Couldn't load this service." onRetry={loadService} />;
   }
 
   const areaName = areas.find((a) => String(a.id) === String(areaId))?.name ?? 'this area';

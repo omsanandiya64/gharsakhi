@@ -10,6 +10,7 @@ import { MoneyText } from '../../components/MoneyText.jsx';
 import { ServiceIcon } from '../../components/ServiceIcon.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
 import { Skeleton } from '../../components/Skeleton.jsx';
+import { EmptyState } from '../../components/EmptyState.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 
 export default function Home() {
@@ -84,7 +85,7 @@ export default function Home() {
       <div>
         <h2 className="text-lg font-display font-semibold text-gs-teal-900 mb-3">What do you need done?</h2>
         {state.services.length === 0 ? (
-          <ErrorState message="No services are available right now." onRetry={load} />
+          <EmptyState title="No services available" description="Check back shortly." actionLabel="Refresh" onAction={load} />
         ) : (
           <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
             {state.services.map((service) => (

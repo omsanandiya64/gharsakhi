@@ -14,7 +14,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    // A 401 from an auth endpoint itself (e.g. wrong password on login) means
+    // "this attempt was rejected," not "your session died" - redirecting here
+    // would blow away the login/register form the user is actively using.
+    // Only a 401 from an already-authenticated request means the session is
+    // actually invalid.
+    const isAuthEndpoint = err.config?.url?.includes('/auth/');
+    if (err.response?.status === 401 && !isAuthEndpoint) {
       const { role } = readStoredAuth();
       clearStoredAuth();
       const loginPath = loginPathForRole(role);

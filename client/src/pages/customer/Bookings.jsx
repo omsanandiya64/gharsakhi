@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { listCustomerBookings } from '../../api/bookings.js';
 import { listServices } from '../../api/services.js';
+import { useToast } from '../../components/Toast.jsx';
 import { Card } from '../../components/Card.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
 import { MoneyText } from '../../components/MoneyText.jsx';
@@ -22,14 +23,17 @@ const STATUS_OPTIONS = [
 
 export default function Bookings() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [services, setServices] = useState([]);
   const [filters, setFilters] = useState({ status: '', service_id: '', from: '', to: '' });
   const [page, setPage] = useState(1);
   const [state, setState] = useState({ status: 'loading', data: [], total: 0, pageSize: 20 });
 
   useEffect(() => {
-    listServices().then(setServices).catch(() => {});
-  }, []);
+    listServices()
+      .then(setServices)
+      .catch(() => showToast('Could not load the service filter list.', 'error'));
+  }, [showToast]);
 
   const load = useCallback(() => {
     setState((s) => ({ ...s, status: 'loading' }));

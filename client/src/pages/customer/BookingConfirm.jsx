@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate, Navigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { getCustomerWallet } from '../../api/wallet.js';
@@ -22,12 +22,17 @@ export default function BookingConfirm() {
   const [walletState, setWalletState] = useState({ status: 'loading', balancePaise: null });
   const [submit, setSubmit] = useState({ status: 'idle', message: null, insufficientBalance: false, workerOffline: false });
 
-  useEffect(() => {
+  const loadWallet = useCallback(() => {
     if (!service || !worker) return;
+    setWalletState({ status: 'loading', balancePaise: null });
     getCustomerWallet({ page_size: 1 })
       .then((wallet) => setWalletState({ status: 'ready', balancePaise: wallet.balance_paise }))
       .catch(() => setWalletState({ status: 'error', balancePaise: null }));
   }, [service, worker]);
+
+  useEffect(() => {
+    loadWallet();
+  }, [loadWallet]);
 
   if (!service || !worker) {
     return <Navigate to="/customer" replace />;
@@ -102,7 +107,18 @@ export default function BookingConfirm() {
         <Card>
           <p className="text-sm font-semibold text-gs-ink mb-2">Wallet</p>
           {walletState.status === 'loading' && <Skeleton className="h-10 w-full" />}
-          {walletState.status === 'error' && <p className="text-sm text-gs-danger">Couldn't load your balance.</p>}
+          {walletState.status === 'error' && (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-gs-danger">Couldn't load your balance.</p>
+              <button
+                type="button"
+                onClick={loadWallet}
+                className="text-sm font-semibold text-gs-teal-600 underline min-h-[48px] px-2"
+              >
+                Try again
+              </button>
+            </div>
+          )}
           {walletState.status === 'ready' && (
             <div className="flex items-center justify-between text-sm flex-wrap gap-2">
               <span>

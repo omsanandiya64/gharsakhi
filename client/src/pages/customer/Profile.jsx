@@ -19,8 +19,10 @@ export default function Profile() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    listAreas().then(setAreas).catch(() => {});
-  }, []);
+    listAreas()
+      .then(setAreas)
+      .catch(() => showToast('Could not load areas. Try reloading the page.', 'error'));
+  }, [showToast]);
 
   async function handleSubmit(e) {
     e.preventDefault();

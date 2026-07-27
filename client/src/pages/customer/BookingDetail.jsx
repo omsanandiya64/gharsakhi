@@ -69,6 +69,11 @@ export default function BookingDetail() {
       load();
     } catch (err) {
       showToast(err.response?.data?.error?.message || 'Could not cancel this booking.', 'error');
+      // A failure here (e.g. 409 - the worker accepted it in the meantime)
+      // means the status shown is stale; refetch so the page reflects reality
+      // instead of leaving the old status/actions visible for the user to
+      // retry against indefinitely.
+      load();
     } finally {
       setCancelling(false);
     }

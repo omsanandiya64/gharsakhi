@@ -1,19 +1,34 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { reviewBooking } from '../../api/bookings.js';
+import { useCallback, useEffect, useState } from 'react';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { getCustomerBookingDetail, reviewBooking } from '../../api/bookings.js';
 import { useToast } from '../../components/Toast.jsx';
 import { Card } from '../../components/Card.jsx';
 import { Rating } from '../../components/Rating.jsx';
 import { Button } from '../../components/Button.jsx';
+import { Skeleton } from '../../components/Skeleton.jsx';
+import { ErrorState } from '../../components/ErrorState.jsx';
 
 export default function RateWorker() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  const [loadState, setLoadState] = useState({ status: 'loading', booking: null });
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
+
+  const load = useCallback(() => {
+    setLoadState({ status: 'loading', booking: null });
+    getCustomerBookingDetail(id)
+      .then((booking) => setLoadState({ status: 'ready', booking }))
+      .catch(() => setLoadState({ status: 'error', booking: null }));
+  }, [id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function handleSubmit() {
     if (rating < 1) {
@@ -32,12 +47,42 @@ export default function RateWorker() {
     }
   }
 
+  if (loadState.status === 'loading') {
+    return <Skeleton className="h-64 w-full rounded-2xl" />;
+  }
+
+  if (loadState.status === 'error' || !loadState.booking) {
+    return <ErrorState message="Couldn't load this booking." onRetry={load} />;
+  }
+
+  const booking = loadState.booking;
+
+  // Not eligible to rate (not completed, or already reviewed - e.g. reached via
+  // a stale link, a booking that isn't theirs, or a race with another review) -
+  // bounce to the detail page rather than showing a rating form for nothing.
+  if (booking.status !== 'completed' || booking.review_id) {
+    return <Navigate to={`/customer/bookings/${id}`} replace />;
+  }
+
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <h1 className="text-xl font-display font-bold text-gs-teal-900">Rate your experience</h1>
+      <div>
+        <h1 className="text-xl font-display font-bold text-gs-teal-900">Rate your experience</h1>
+        <p className="text-sm text-gs-muted">
+          {booking.service_name} with {booking.worker_name}
+        </p>
+      </div>
 
       <Card className="flex flex-col items-center gap-4 py-8">
-        <Rating value={rating} interactive size={32} onChange={(v) => { setRating(v); setError(''); }} />
+        <Rating
+          value={rating}
+          interactive
+          size={32}
+          onChange={(v) => {
+            setRating(v);
+            setError('');
+          }}
+        />
         <p className="text-sm text-gs-muted">Tap a star to rate</p>
       </Card>
 

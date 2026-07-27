@@ -5,6 +5,7 @@ import { listServices } from '../../api/services.js';
 import { ServiceIcon } from '../../components/ServiceIcon.jsx';
 import { Button } from '../../components/Button.jsx';
 import { Skeleton } from '../../components/Skeleton.jsx';
+import { EmptyState } from '../../components/EmptyState.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 
 const STEPS = [
@@ -82,7 +83,10 @@ export default function Landing() {
         </h2>
         {state.status === 'loading' && <ServiceGridSkeleton />}
         {state.status === 'error' && <ErrorState message="Couldn't load services right now." onRetry={load} />}
-        {state.status === 'ready' && (
+        {state.status === 'ready' && state.services.length === 0 && (
+          <EmptyState title="No services listed yet" description="Check back shortly." actionLabel="Refresh" onAction={load} />
+        )}
+        {state.status === 'ready' && state.services.length > 0 && (
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {state.services.map((service) => (
               <ServiceIcon key={service.id} icon={service.icon} name={service.name} />
