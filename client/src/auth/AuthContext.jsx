@@ -16,9 +16,17 @@ export function AuthProvider({ children }) {
     setAuth({ token: null, role: null, user: null });
   }, []);
 
+  const updateUser = useCallback((patch) => {
+    setAuth((prev) => {
+      const nextUser = { ...prev.user, ...patch };
+      writeStoredAuth(prev.role, prev.token, nextUser);
+      return { ...prev, user: nextUser };
+    });
+  }, []);
+
   const value = useMemo(
-    () => ({ ...auth, isAuthenticated: Boolean(auth.token), login, logout }),
-    [auth, login, logout]
+    () => ({ ...auth, isAuthenticated: Boolean(auth.token), login, logout, updateUser }),
+    [auth, login, logout, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

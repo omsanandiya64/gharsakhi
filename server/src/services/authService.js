@@ -40,6 +40,49 @@ export async function loginCustomer({ phone, password }) {
   return { token, user };
 }
 
+export async function updateCustomerProfile(customerId, { name, address, area_id }) {
+  const { rows: existingRows } = await pool.query('SELECT is_blocked FROM customers WHERE id = $1', [customerId]);
+  if (!existingRows[0]) throw Errors.NOT_FOUND('Customer not found');
+  if (existingRows[0].is_blocked) throw Errors.ACCOUNT_BLOCKED();
+
+  const fields = [];
+  const params = [];
+  if (name !== undefined) {
+    params.push(name);
+    fields.push(`name = $${params.length}`);
+  }
+  if (address !== undefined) {
+    params.push(address);
+    fields.push(`address_text = $${params.length}`);
+  }
+  if (area_id !== undefined) {
+    params.push(area_id);
+    fields.push(`area_id = $${params.length}`);
+  }
+
+  if (fields.length === 0) {
+    const { rows } = await pool.query(
+      `SELECT id, name, phone, email, address_text, area_id, wallet_paise, is_blocked, created_at
+       FROM customers WHERE id = $1`,
+      [customerId]
+    );
+    return rows[0];
+  }
+
+  params.push(customerId);
+  try {
+    const { rows } = await pool.query(
+      `UPDATE customers SET ${fields.join(', ')} WHERE id = $${params.length}
+       RETURNING id, name, phone, email, address_text, area_id, wallet_paise, is_blocked, created_at`,
+      params
+    );
+    return rows[0];
+  } catch (err) {
+    if (err.code === '23503') throw Errors.VALIDATION_ERROR('Selected area does not exist');
+    throw err;
+  }
+}
+
 export async function registerWorker({ name, phone, email, password, service_ids, area_ids }) {
   const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
   const client = await pool.connect();

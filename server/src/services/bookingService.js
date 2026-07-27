@@ -21,7 +21,8 @@ export async function listAreas() {
  */
 export async function matchWorkers(serviceId, areaId) {
   const { rows } = await pool.query(
-    `SELECT w.id, w.name, w.photo_url, w.bio, w.is_online, w.rating_avg, w.rating_count
+    `SELECT w.id, w.name, w.photo_url, w.bio, w.is_online, w.rating_avg, w.rating_count,
+            (SELECT COUNT(*) FROM bookings b WHERE b.worker_id = w.id AND b.status = 'completed')::int AS completed_jobs
      FROM workers w
      WHERE w.is_online = TRUE AND w.is_blocked = FALSE
        AND EXISTS (SELECT 1 FROM worker_services ws WHERE ws.worker_id = w.id AND ws.service_id = $1)
@@ -451,11 +452,13 @@ export async function getCustomerBookingDetail(customerId, bookingId) {
   const { rows } = await pool.query(
     `SELECT b.*, s.name AS service_name, s.icon AS service_icon,
             w.name AS worker_name, w.photo_url AS worker_photo_url,
-            w.rating_avg AS worker_rating_avg, a.name AS area_name
+            w.rating_avg AS worker_rating_avg, a.name AS area_name,
+            r.id AS review_id, r.rating AS review_rating, r.comment AS review_comment
      FROM bookings b
      JOIN services s ON s.id = b.service_id
      JOIN workers w ON w.id = b.worker_id
      JOIN areas a ON a.id = b.area_id
+     LEFT JOIN reviews r ON r.booking_id = b.id
      WHERE b.id = $1 AND b.customer_id = $2`,
     [bookingId, customerId]
   );
@@ -471,8 +474,9 @@ export async function getWorkerProfileDetail(workerId) {
   // booking-history read path, which already surfaces a blocked worker's
   // name/photo/rating unfiltered.
   const { rows: workerRows } = await pool.query(
-    `SELECT id, name, photo_url, bio, is_online, rating_avg, rating_count
-     FROM workers WHERE id = $1`,
+    `SELECT w.id, w.name, w.photo_url, w.bio, w.is_online, w.rating_avg, w.rating_count,
+            (SELECT COUNT(*) FROM bookings b WHERE b.worker_id = w.id AND b.status = 'completed')::int AS completed_jobs
+     FROM workers w WHERE w.id = $1`,
     [workerId]
   );
   const worker = workerRows[0];

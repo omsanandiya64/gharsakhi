@@ -119,7 +119,7 @@ export default function BrowseWorkers() {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gs-ink truncate">{worker.name}</p>
                 <Rating value={Number(worker.rating_avg)} count={worker.rating_count} size={14} />
-                <p className="text-xs text-gs-muted mt-0.5">{worker.rating_count} jobs done</p>
+                <p className="text-xs text-gs-muted mt-0.5">{worker.completed_jobs} jobs done</p>
               </div>
               <div className="text-right shrink-0">
                 <MoneyText paise={service.price_paise} className="block font-bold text-gs-teal-900" />

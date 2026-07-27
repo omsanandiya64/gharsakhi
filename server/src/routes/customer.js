@@ -5,11 +5,27 @@ import { validate, validateQuery } from '../middleware/validate.js';
 import { auth } from '../middleware/auth.js';
 import * as bookingService from '../services/bookingService.js';
 import * as walletService from '../services/walletService.js';
+import * as authService from '../services/authService.js';
 import { parsePagination } from '../utils/pagination.js';
 
 const router = Router();
 
 router.use(auth('customer'));
+
+const updateProfileSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  address: z.string().trim().max(500).optional().nullable(),
+  area_id: z.coerce.number().int().positive().optional().nullable(),
+});
+
+router.patch(
+  '/me',
+  validate(updateProfileSchema),
+  asyncHandler(async (req, res) => {
+    const profile = await authService.updateCustomerProfile(req.user.id, req.body);
+    res.json(profile);
+  })
+);
 
 const matchWorkersQuerySchema = z.object({
   service_id: z.coerce.number().int().positive(),

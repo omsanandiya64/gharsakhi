@@ -11,6 +11,8 @@ import CustomerHome from './pages/customer/Home.jsx';
 import BrowseWorkers from './pages/customer/BrowseWorkers.jsx';
 import BookingConfirm from './pages/customer/BookingConfirm.jsx';
 import CustomerBookings from './pages/customer/Bookings.jsx';
+import BookingDetail from './pages/customer/BookingDetail.jsx';
+import RateWorker from './pages/customer/RateWorker.jsx';
 import CustomerWallet from './pages/customer/Wallet.jsx';
 import CustomerProfile from './pages/customer/Profile.jsx';
 
@@ -49,6 +51,8 @@ function App() {
         <Route index element={<CustomerHome />} />
         <Route path="book/:serviceId" element={<BrowseWorkers />} />
         <Route path="bookings" element={<CustomerBookings />} />
+        <Route path="bookings/:id" element={<BookingDetail />} />
+        <Route path="bookings/:id/rate" element={<RateWorker />} />
         <Route path="wallet" element={<CustomerWallet />} />
         <Route path="profile" element={<CustomerProfile />} />
       </Route>
