@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getCustomerWallet } from '../../api/wallet.js';
+import { isRazorpayConfigured } from '../../lib/razorpay.js';
 import { Card } from '../../components/Card.jsx';
 import { MoneyText } from '../../components/MoneyText.jsx';
 import { Button } from '../../components/Button.jsx';
@@ -8,6 +9,7 @@ import { SkeletonList, Skeleton } from '../../components/Skeleton.jsx';
 import { EmptyState } from '../../components/EmptyState.jsx';
 import { ErrorState } from '../../components/ErrorState.jsx';
 import { formatDateTime } from '../../lib/format.js';
+import { TopUpModal } from './TopUpModal.jsx';
 
 const TYPE_LABELS = {
   topup: 'Top-up',
@@ -20,6 +22,8 @@ const TYPE_LABELS = {
 export default function Wallet() {
   const [page, setPage] = useState(1);
   const [state, setState] = useState({ status: 'loading', balancePaise: null, data: [], total: 0, pageSize: 20 });
+  const [topUpOpen, setTopUpOpen] = useState(false);
+  const razorpayConfigured = isRazorpayConfigured();
 
   const load = useCallback(() => {
     setState((s) => ({ ...s, status: 'loading' }));
@@ -54,12 +58,22 @@ export default function Wallet() {
           )}
         </div>
         <div className="text-right">
-          <Button variant="marigold" disabled>
-            Top up
-          </Button>
-          <p className="text-xs text-gs-muted mt-1">Coming soon</p>
+          {razorpayConfigured ? (
+            <Button variant="marigold" onClick={() => setTopUpOpen(true)}>
+              Top up
+            </Button>
+          ) : (
+            <>
+              <Button variant="marigold" disabled>
+                Top up
+              </Button>
+              <p className="text-xs text-gs-muted mt-1">Coming soon</p>
+            </>
+          )}
         </div>
       </Card>
+
+      <TopUpModal open={topUpOpen} onClose={() => setTopUpOpen(false)} onSuccess={load} />
 
       <div>
         <h2 className="text-lg font-display font-semibold text-gs-teal-900 mb-3">Transactions</h2>

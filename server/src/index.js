@@ -8,6 +8,7 @@ import customerRouter from './routes/customer.js';
 import workerRouter from './routes/worker.js';
 import adminRouter from './routes/admin.js';
 import pushRouter from './routes/push.js';
+import paymentsRouter from './routes/payments.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/customer', customerRouter);
 app.use('/api/worker', workerRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/push', pushRouter);
+app.use('/api/payments', paymentsRouter);
 
 app.use('/api', notFoundHandler);
 app.use(errorHandler);

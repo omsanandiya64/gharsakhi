@@ -21,4 +21,6 @@ export const Errors = {
   INVALID_TRANSITION: () => new AppError(409, 'INVALID_TRANSITION', 'This booking cannot change to that status from its current state'),
   ALREADY_REVIEWED: () => new AppError(409, 'ALREADY_REVIEWED', 'This booking has already been reviewed'),
   PUSH_NOT_CONFIGURED: () => new AppError(503, 'PUSH_NOT_CONFIGURED', 'Push notifications are not configured'),
+  PAYMENTS_NOT_CONFIGURED: () => new AppError(503, 'PAYMENTS_NOT_CONFIGURED', 'Payments are not configured'),
+  INVALID_SIGNATURE: () => new AppError(400, 'INVALID_SIGNATURE', 'Payment signature verification failed'),
 };
