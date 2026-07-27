@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getWorkerMe, setWorkerAvailability } from '../../api/worker.js';
 import { getWorkerRequests, acceptBooking, declineBooking } from '../../api/bookings.js';
 import { useToast } from '../../components/Toast.jsx';
+import { usePolling } from '../../lib/usePolling.js';
+import { subscribeToPush } from '../../lib/push.js';
 import { Card } from '../../components/Card.jsx';
 import { MoneyText } from '../../components/MoneyText.jsx';
 import { Rating } from '../../components/Rating.jsx';
@@ -19,6 +21,7 @@ export default function Dashboard() {
   const [busyId, setBusyId] = useState(null);
   const [declineTarget, setDeclineTarget] = useState(null);
   const [declining, setDeclining] = useState(false);
+  const requestsFailCountRef = useRef(0);
 
   const loadMe = useCallback(() => {
     setMeState({ status: 'loading', me: null });
@@ -33,20 +36,42 @@ export default function Dashboard() {
   const loadRequests = useCallback(() => {
     setRequestsState((s) => ({ ...s, status: 'loading' }));
     getWorkerRequests()
-      .then((requests) => setRequestsState({ status: 'ready', requests }))
+      .then((requests) => {
+        requestsFailCountRef.current = 0;
+        setRequestsState({ status: 'ready', requests });
+      })
       .catch(() => setRequestsState({ status: 'error', requests: [] }));
+  }, []);
+
+  // Polling (§8): every 5s, skipping ticks while the tab is hidden and never
+  // overlapping (handled by usePolling itself). A single failed poll must not
+  // wipe out a perfectly good list on screen - only after 3 consecutive
+  // failures does it fall back to the error state.
+  const pollRequests = useCallback(async (isMounted) => {
+    try {
+      const requests = await getWorkerRequests();
+      if (!isMounted()) return;
+      requestsFailCountRef.current = 0;
+      setRequestsState({ status: 'ready', requests });
+    } catch {
+      if (!isMounted()) return;
+      requestsFailCountRef.current += 1;
+      setRequestsState((s) => (s.status === 'ready' && requestsFailCountRef.current < 3 ? s : { status: 'error', requests: [] }));
+    }
   }, []);
 
   useEffect(() => {
     loadMe();
-    loadRequests();
-  }, [loadMe, loadRequests]);
+  }, [loadMe]);
+
+  usePolling(pollRequests, 5000);
 
   async function handleToggle() {
     const next = !isOnline;
     setIsOnline(next);
     try {
       await setWorkerAvailability(next);
+      if (next) subscribeToPush().catch(() => {});
     } catch (err) {
       setIsOnline(!next);
       showToast(err.response?.data?.error?.message || 'Could not update your availability.', 'error');

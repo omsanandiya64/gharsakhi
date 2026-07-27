@@ -30,6 +30,11 @@ export async function reviewBooking(id, payload) {
   return data;
 }
 
+export async function getCustomerUpdates(since) {
+  const { data } = await api.get('/customer/updates', { params: since ? { since } : {} });
+  return data;
+}
+
 export async function getWorkerRequests() {
   const { data } = await api.get('/worker/requests');
   return data;

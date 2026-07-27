@@ -111,4 +111,16 @@ router.get(
   })
 );
 
+const updatesQuerySchema = z.object({
+  since: z.string().datetime().optional(),
+});
+
+router.get(
+  '/updates',
+  validateQuery(updatesQuerySchema),
+  asyncHandler(async (req, res) => {
+    res.json(await bookingService.getCustomerUpdates(req.user.id, req.validatedQuery.since));
+  })
+);
+
 export default router;

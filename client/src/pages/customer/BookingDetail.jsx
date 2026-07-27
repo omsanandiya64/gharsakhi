@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle2, XCircle, Circle } from 'lucide-react';
-import { getCustomerBookingDetail, cancelBooking } from '../../api/bookings.js';
+import { getCustomerBookingDetail, cancelBooking, getCustomerUpdates } from '../../api/bookings.js';
 import { useToast } from '../../components/Toast.jsx';
+import { usePolling } from '../../lib/usePolling.js';
 import { Card } from '../../components/Card.jsx';
 import { MoneyText } from '../../components/MoneyText.jsx';
 import { StatusPill } from '../../components/StatusPill.jsx';
@@ -49,6 +50,7 @@ export default function BookingDetail() {
   const { showToast } = useToast();
   const [state, setState] = useState({ status: 'loading', booking: null });
   const [cancelling, setCancelling] = useState(false);
+  const sinceRef = useRef(new Date().toISOString());
 
   const load = useCallback(() => {
     setState({ status: 'loading', booking: null });
@@ -60,6 +62,26 @@ export default function BookingDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Polling (§8): only refetch the full detail when this specific booking
+  // shows up in the "what changed" response - fails silently, a missed poll
+  // just means the update shows up on the next tick instead.
+  const pollUpdates = useCallback(
+    async (isMounted) => {
+      const requestedAt = sinceRef.current;
+      try {
+        const changes = await getCustomerUpdates(requestedAt);
+        if (!isMounted()) return;
+        sinceRef.current = new Date().toISOString();
+        if (changes.some((b) => String(b.id) === String(id))) load();
+      } catch {
+        // silent
+      }
+    },
+    [id, load]
+  );
+
+  usePolling(pollUpdates, 5000);
 
   async function handleCancel() {
     setCancelling(true);

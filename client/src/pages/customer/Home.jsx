@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Wallet as WalletIcon } from 'lucide-react';
 import { listServices } from '../../api/services.js';
 import { getCustomerWallet } from '../../api/wallet.js';
-import { listCustomerBookings } from '../../api/bookings.js';
+import { listCustomerBookings, getCustomerUpdates } from '../../api/bookings.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { usePolling } from '../../lib/usePolling.js';
 import { Card } from '../../components/Card.jsx';
 import { MoneyText } from '../../components/MoneyText.jsx';
 import { ServiceIcon } from '../../components/ServiceIcon.jsx';
@@ -16,6 +17,7 @@ import { ErrorState } from '../../components/ErrorState.jsx';
 export default function Home() {
   const { user } = useAuth();
   const [state, setState] = useState({ status: 'loading', services: [], balancePaise: null, activeBooking: null });
+  const sinceRef = useRef(new Date().toISOString());
 
   const load = useCallback(() => {
     setState({ status: 'loading', services: [], balancePaise: null, activeBooking: null });
@@ -35,6 +37,32 @@ export default function Home() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Polling (§8): a lightweight "what changed" check every 5s. Only when it
+  // reports something does the more expensive active-booking + wallet
+  // refetch actually happen - fails silently, this banner isn't critical
+  // enough to warrant an error toast on a transient blip.
+  const pollUpdates = useCallback(async (isMounted) => {
+    const requestedAt = sinceRef.current;
+    try {
+      const changes = await getCustomerUpdates(requestedAt);
+      if (!isMounted()) return;
+      sinceRef.current = new Date().toISOString();
+      if (changes.length === 0) return;
+
+      Promise.all([listCustomerBookings({ page_size: 5 }), getCustomerWallet({ page_size: 1 })])
+        .then(([bookingsRes, wallet]) => {
+          if (!isMounted()) return;
+          const active = bookingsRes.data.find((b) => b.status === 'pending' || b.status === 'accepted');
+          setState((s) => (s.status === 'ready' ? { ...s, activeBooking: active ?? null, balancePaise: wallet.balance_paise } : s));
+        })
+        .catch(() => {});
+    } catch {
+      // silent - a missed poll just means the banner updates on the next tick
+    }
+  }, []);
+
+  usePolling(pollUpdates, 5000);
 
   if (state.status === 'loading') {
     return (

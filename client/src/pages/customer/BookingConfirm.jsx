@@ -5,6 +5,7 @@ import { getCustomerWallet } from '../../api/wallet.js';
 import { createBooking } from '../../api/bookings.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useToast } from '../../components/Toast.jsx';
+import { subscribeToPush } from '../../lib/push.js';
 import { Card } from '../../components/Card.jsx';
 import { MoneyText } from '../../components/MoneyText.jsx';
 import { Rating } from '../../components/Rating.jsx';
@@ -48,6 +49,7 @@ export default function BookingConfirm() {
         address_text: address,
       });
       showToast('Booking confirmed! Waiting for the worker to accept.', 'success');
+      subscribeToPush().catch(() => {});
       navigate('/customer/bookings');
     } catch (err) {
       const code = err.response?.data?.error?.code;

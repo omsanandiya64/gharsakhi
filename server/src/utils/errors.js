@@ -20,4 +20,5 @@ export const Errors = {
   WORKER_UNAVAILABLE: () => new AppError(409, 'WORKER_UNAVAILABLE', 'Worker is not available for this service/area right now'),
   INVALID_TRANSITION: () => new AppError(409, 'INVALID_TRANSITION', 'This booking cannot change to that status from its current state'),
   ALREADY_REVIEWED: () => new AppError(409, 'ALREADY_REVIEWED', 'This booking has already been reviewed'),
+  PUSH_NOT_CONFIGURED: () => new AppError(503, 'PUSH_NOT_CONFIGURED', 'Push notifications are not configured'),
 };

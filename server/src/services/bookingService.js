@@ -3,6 +3,18 @@ import { splitPrice } from '../utils/money.js';
 import { Errors } from '../utils/errors.js';
 import { istDayStartUtc, nextCalendarDay } from '../utils/dateRange.js';
 import { toEnvelope } from '../utils/pagination.js';
+import * as pushService from './pushService.js';
+
+/**
+ * Fire-and-forget by design: never awaited by the caller, and pushService
+ * itself catches everything internally, so a dead push provider can never
+ * delay or fail the API response for the booking action that triggered it.
+ */
+function notify(actor, actorId, payload) {
+  pushService.sendPushToActor(actor, actorId, payload).catch((err) => {
+    console.error('Push notify failed:', err.message);
+  });
+}
 
 export async function listServices() {
   const { rows } = await pool.query(
@@ -95,6 +107,13 @@ export async function createBooking(customerId, { service_id, worker_id, area_id
     );
 
     await client.query('COMMIT');
+
+    notify('worker', worker_id, {
+      title: 'New job request',
+      body: `${service.name} - ₹${(workerEarningPaise / 100).toFixed(2)}`,
+      url: '/worker',
+    });
+
     return booking;
   } catch (err) {
     try {
@@ -139,6 +158,13 @@ export async function acceptBooking(workerId, bookingId) {
     );
 
     await client.query('COMMIT');
+
+    notify('customer', booking.customer_id, {
+      title: 'Booking accepted',
+      body: `Booking #${bookingId} was accepted`,
+      url: `/customer/bookings/${bookingId}`,
+    });
+
     return rows[0];
   } catch (err) {
     try {
@@ -186,6 +212,13 @@ export async function declineBooking(workerId, bookingId, reason) {
     );
 
     await client.query('COMMIT');
+
+    notify('customer', booking.customer_id, {
+      title: 'Booking declined',
+      body: `Booking #${bookingId} was declined`,
+      url: `/customer/bookings/${bookingId}`,
+    });
+
     return rows[0];
   } catch (err) {
     try {
@@ -239,6 +272,13 @@ export async function completeBooking(workerId, bookingId) {
     );
 
     await client.query('COMMIT');
+
+    notify('customer', booking.customer_id, {
+      title: 'Job completed',
+      body: `Booking #${bookingId} is complete - rate your experience`,
+      url: `/customer/bookings/${bookingId}`,
+    });
+
     return rows[0];
   } catch (err) {
     try {
@@ -533,6 +573,35 @@ export async function getWorkerRequests(workerId) {
      WHERE b.worker_id = $1 AND b.status = 'pending'
      ORDER BY b.created_at ASC`,
     [workerId]
+  );
+  return rows;
+}
+
+/**
+ * §8 polling: "status changes since timestamp." A booking counts as changed
+ * if creation or any of its terminal timestamps is newer than `since` -
+ * GREATEST(...) over the nullable columns (coalesced to -infinity) catches
+ * a brand-new booking and any status transition in one comparison, so the
+ * caller never has to guess which column matters for the current status.
+ */
+export async function getCustomerUpdates(customerId, since) {
+  const sinceValue = since ? new Date(since) : new Date(0);
+  const { rows } = await pool.query(
+    `SELECT b.id, b.status, b.created_at, b.accepted_at, b.declined_at, b.completed_at, b.cancelled_at,
+            s.name AS service_name, w.name AS worker_name
+     FROM bookings b
+     JOIN services s ON s.id = b.service_id
+     JOIN workers w ON w.id = b.worker_id
+     WHERE b.customer_id = $1
+       AND GREATEST(
+             b.created_at,
+             COALESCE(b.accepted_at, '-infinity'::timestamptz),
+             COALESCE(b.declined_at, '-infinity'::timestamptz),
+             COALESCE(b.completed_at, '-infinity'::timestamptz),
+             COALESCE(b.cancelled_at, '-infinity'::timestamptz)
+           ) > $2
+     ORDER BY b.created_at DESC`,
+    [customerId, sinceValue]
   );
   return rows;
 }
