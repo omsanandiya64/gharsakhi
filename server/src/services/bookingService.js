@@ -364,7 +364,7 @@ export async function createReview(customerId, bookingId, { rating, comment }) {
  * interpolates a value into the SQL string. Column names below are always
  * hardcoded literals, never derived from request input.
  */
-function pushBookingFilters(clauses, params, { status, service_id, from, to }) {
+export function pushBookingFilters(clauses, params, { status, service_id, from, to }) {
   if (status) {
     params.push(status);
     clauses.push(`b.status = $${params.length}`);
