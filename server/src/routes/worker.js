@@ -5,11 +5,67 @@ import { validate, validateQuery } from '../middleware/validate.js';
 import { auth } from '../middleware/auth.js';
 import * as bookingService from '../services/bookingService.js';
 import * as walletService from '../services/walletService.js';
+import * as authService from '../services/authService.js';
 import { parsePagination } from '../utils/pagination.js';
 
 const router = Router();
 
 router.use(auth('worker'));
+
+router.get(
+  '/me',
+  asyncHandler(async (req, res) => {
+    res.json(await authService.getWorkerMe(req.user.id));
+  })
+);
+
+const updateWorkerProfileSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  bio: z.string().trim().max(1000).optional().nullable(),
+  photo_url: z.string().trim().max(2000).optional().nullable(),
+});
+
+router.patch(
+  '/me',
+  validate(updateWorkerProfileSchema),
+  asyncHandler(async (req, res) => {
+    res.json(await authService.updateWorkerProfile(req.user.id, req.body));
+  })
+);
+
+const availabilitySchema = z.object({ is_online: z.boolean() });
+
+router.patch(
+  '/availability',
+  validate(availabilitySchema),
+  asyncHandler(async (req, res) => {
+    res.json(await authService.setWorkerAvailability(req.user.id, req.body.is_online));
+  })
+);
+
+const serviceIdsSchema = z.object({
+  service_ids: z.array(z.coerce.number().int().positive()).min(1, 'Select at least one service'),
+});
+
+router.put(
+  '/services',
+  validate(serviceIdsSchema),
+  asyncHandler(async (req, res) => {
+    res.json(await authService.setWorkerServices(req.user.id, req.body.service_ids));
+  })
+);
+
+const areaIdsSchema = z.object({
+  area_ids: z.array(z.coerce.number().int().positive()).min(1, 'Select at least one area'),
+});
+
+router.put(
+  '/areas',
+  validate(areaIdsSchema),
+  asyncHandler(async (req, res) => {
+    res.json(await authService.setWorkerAreas(req.user.id, req.body.area_ids));
+  })
+);
 
 router.get(
   '/requests',

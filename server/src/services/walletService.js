@@ -1,6 +1,7 @@
 import pool from '../db/pool.js';
 import { Errors } from '../utils/errors.js';
 import { toEnvelope } from '../utils/pagination.js';
+import { istDayStartUtc, nextCalendarDay } from '../utils/dateRange.js';
 
 async function getWallet(table, actor, actorId, { pageSize, offset, page }) {
   const { rows: balanceRows } = await pool.query(
@@ -38,4 +39,22 @@ export function getCustomerWallet(customerId, pagination) {
 
 export function getWorkerWallet(workerId, pagination) {
   return getWallet('workers', 'worker', workerId, pagination);
+}
+
+/**
+ * "Today" is the worker's IST calendar day, computed from the server's
+ * current instant the same way the from/to booking filters are (§4 boundary
+ * rule) - not the client's local timezone.
+ */
+export async function getTodayEarnings(workerId) {
+  const istNow = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const todayStr = istNow.toISOString().slice(0, 10);
+  const { rows } = await pool.query(
+    `SELECT COALESCE(SUM(amount_paise), 0)::int AS total
+     FROM wallet_transactions
+     WHERE actor = 'worker' AND actor_id = $1 AND type = 'earning'
+       AND created_at >= $2 AND created_at < $3`,
+    [workerId, istDayStartUtc(todayStr), istDayStartUtc(nextCalendarDay(todayStr))]
+  );
+  return rows[0].total;
 }
